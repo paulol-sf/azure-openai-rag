@@ -11,7 +11,8 @@ Content-Type: application/json
 
 {
   "messages": [{
-    "content": "How to search and book rentals?",
+    //"content": "How to search and book rentals?",
+    "content": "how to pay a rental?",
     "role": "user"
   }]
 }
