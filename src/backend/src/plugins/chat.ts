@@ -14,6 +14,15 @@ For tabular information return it as an html table. Do not return markdown forma
 Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, for example: [info1.txt]. Don't combine sources, list each source separately, for example: [info1.txt][info2.pdf].
 `;
 
+const FOLLOW_UP_QUESTIONS_PROMPT = `Generate 3 very brief follow-up questions that the user would likely ask next.
+Enclose the follow-up questions in double angle brackets. Example:
+<<Am I allowed to invite friends for a party?>>
+<<How can I ask for a refund?>>
+<<What If I break something?>>
+
+Do no repeat questions that have already been asked.
+Make sure the last question ends with ">>".`;
+
 
 export class ChatService {
   tokenLimit: number = 4000;
@@ -43,7 +52,8 @@ export class ChatService {
     const content = results.join('\n');
 
     // Set the context with the system message
-    const systemMessage = SYSTEM_MESSAGE_PROMPT;
+    //const systemMessage = SYSTEM_MESSAGE_PROMPT;
+    const systemMessage = SYSTEM_MESSAGE_PROMPT + FOLLOW_UP_QUESTIONS_PROMPT;
 
     // Get the latest user message (the question), and inject the sources into it
     const userMessage = `${messages[messages.length - 1].content}\n\nSources:\n${content}`;
