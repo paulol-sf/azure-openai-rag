@@ -12,7 +12,7 @@ export type ChatRequestOptions = {
 export async function getCompletion(options: ChatRequestOptions) {
   const apiUrl = options.apiUrl || apiBaseUrl;
 
-  const response = await fetch(`${apiUrl}/chat`, {
+  const response = await fetch(`${apiUrl}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
