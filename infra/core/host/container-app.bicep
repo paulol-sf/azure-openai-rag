@@ -91,6 +91,7 @@ var normalizedIdentityType = !empty(identityName) ? 'UserAssigned' : identityTyp
 
 module containerRegistryAccess '../security/registry-access.bicep' = if (usePrivateRegistry) {
   name: '${deployment().name}-registry-access'
+  scope: resourceGroup('rules-engine')
   params: {
     containerRegistryName: containerRegistryName
     principalId: usePrivateRegistry ? userIdentity.properties.principalId : ''

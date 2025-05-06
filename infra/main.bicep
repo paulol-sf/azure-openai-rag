@@ -10,15 +10,16 @@ param environmentName string
 param location string
 
 param resourceGroupName string = ''
-param frontendName string = 'frontend'
-param backendApiName string = 'backend'
-param backendApiImageName string = ''
-param ingestionApiName string = 'ingestion'
-param ingestionApiImageName string = ''
-param qdrantName string = 'qdrant'
-param qdrantImageName string = 'docker.io/qdrant/qdrant:v1.12.0'
+//param frontendName string = 'frontend'
+param backendApiName string = 'flowable-work'
+param backendApiImageName string = 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-work:3.17.3'
+//param ingestionApiName string = 'ingestion'
+//param ingestionApiImageName string = ''
+//param qdrantName string = 'qdrant'
+//param qdrantImageName string = 'docker.io/qdrant/qdrant:v1.12.0'
 
 // The free tier does not support managed identity (required) or semantic search (optional)
+/*
 @allowed(['basic', 'standard', 'standard2', 'standard3', 'storage_optimized_l1', 'storage_optimized_l2'])
 param searchServiceSkuName string // Set in main.parameters.json
 
@@ -29,13 +30,15 @@ param searchServiceSkuName string // Set in main.parameters.json
     type: 'location'
   }
 })
+  
 param openAiLocation string // Set in main.parameters.json
 param openAiUrl string = ''
 param openAiSkuName string = 'S0'
 param openAiApiVersion string // Set in main.parameters.json
-
+*/
 // Location is not relevant here as it's only for the built-in api
 // which is not used here. Static Web App is a global service otherwise
+/*
 @description('Location for the Static Web App')
 @allowed(['westus2', 'centralus', 'eastus2', 'westeurope', 'eastasia', 'eastasiastage'])
 @metadata({
@@ -53,16 +56,16 @@ param embeddingsModelName string // Set in main.parameters.json
 param embeddingsModelVersion string // Set in main.parameters.json
 param embeddingsDeploymentName string = embeddingsModelName
 param embeddingsDeploymentCapacity int = useAzureFree ? 1 : 30
-
+*/
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
-
+/*
 @description('Use Qdrant as the vector DB')
 param useQdrant bool = false
 
 @description('Qdrant port')
 param qdrantPort int // Set in main.parameters.json
-
+*/
 @description('Use Azure Free tier')
 param useAzureFree bool = false
 
@@ -72,15 +75,16 @@ param isContinuousDeployment bool = false
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
-var finalOpenAiUrl = empty(openAiUrl) ? 'https://${openAi.outputs.name}.openai.azure.com' : openAiUrl
-var useAzureAISearch = !useQdrant
-var qdrantUrl = useQdrant ? (qdrantPort == 6334 ? replace('${qdrant.outputs.uri}:80', 'https', 'http') : '${qdrant.outputs.uri}:443') : ''
+//var finalOpenAiUrl = empty(openAiUrl) ? 'https://${openAi.outputs.name}.openai.azure.com' : openAiUrl
+//var useAzureAISearch = !useQdrant
+//var qdrantUrl = useQdrant ? (qdrantPort == 6334 ? replace('${qdrant.outputs.uri}:80', 'https', 'http') : '${qdrant.outputs.uri}:443') : ''
 
-var ingestionApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}ingestion-api-${resourceToken}'
-var backendApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}backend-api-${resourceToken}'
-var qdrantIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}qdrant-${resourceToken}'
-var searchUrl = useQdrant ? '' : 'https://${searchService.outputs.name}.search.windows.net'
-var openAiInstanceName = empty(openAiUrl) ? openAi.outputs.name : ''
+//var ingestionApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}ingestion-api-${resourceToken}'
+//var backendApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}backend-api-${resourceToken}'
+var backendApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}flowable-work-${resourceToken}'
+//var qdrantIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}qdrant-${resourceToken}'
+//var searchUrl = useQdrant ? '' : 'https://${searchService.outputs.name}.search.windows.net'
+//var openAiInstanceName = empty(openAiUrl) ? openAi.outputs.name : ''
 
 // Organize resources in a resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -109,16 +113,17 @@ module containerApps './core/host/container-apps.bicep' = {
   params: {
     name: 'containerapps'
     containerAppsEnvironmentName: '${abbrs.appManagedEnvironments}${resourceToken}'
-    containerRegistryName: '${abbrs.containerRegistryRegistries}${resourceToken}'
+    //containerRegistryName: '${abbrs.containerRegistryRegistries}${resourceToken}'
     location: location
     tags: tags
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
-    containerRegistryAdminUserEnabled: true
+    //containerRegistryAdminUserEnabled: true
   }
 }
 
 // The application frontend
+/*
 module frontend './core/host/staticwebapp.bicep' = {
   name: 'frontend'
   scope: resourceGroup
@@ -128,35 +133,59 @@ module frontend './core/host/staticwebapp.bicep' = {
     tags: union(tags, { 'azd-service-name': frontendName })
   }
 }
-
+*/
 // Backend API identity
 module backendApiIdentity 'core/security/managed-identity.bicep' = {
-  name: 'backend-api-identity'
+  //name: 'backend-api-identity'
+  name: 'flowable-work-identity'
   scope: resourceGroup
   params: {
     name: backendApiIdentityName
     location: location
   }
 }
+/*
+var acrPullRole = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
+resource aksAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: containerRegistry // Use when specifying a scope that is different than the deployment scope
+  name: guid(subscription().id, resourceGroup.id, backendApiIdentity.name, acrPullRole)
+  properties: {
+    roleDefinitionId: acrPullRole
+    principalType: 'ServicePrincipal'
+    principalId: backendApiIdentity.outputs.principalId
+  }
+}
+*/
+/*
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
+  scope: az.resourceGroup('rules-engine')
+  name: 'rulesenginecontainerregistrydev'
+}
+*/
 // The backend API
 module backendApi './core/host/container-app.bicep' = {
-  name: 'backend-api'
+  name: 'flowable-work'
   scope: resourceGroup
   params: {
-    name: !empty(backendApiName) ? backendApiName : '${abbrs.appContainerApps}search-${resourceToken}'
+    name: !empty(backendApiName) ? backendApiName : '${abbrs.appContainerApps}flw-${resourceToken}'
     location: location
     tags: union(tags, { 'azd-service-name': backendApiName })
     containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
+    //containerRegistryName: containerApps.outputs.registryName
+    containerRegistryName: 'rulesenginecontainerregistrydev'
     identityName: backendApiIdentityName
-    allowedOrigins: [frontend.outputs.uri]
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2.0Gi'
+    //allowedOrigins: [frontend.outputs.uri]
+    allowedOrigins: ['*']
+    containerCpuCoreCount: '2.0'
+    containerMemory: '4.0Gi'
     secrets: {
       'appinsights-cs': monitoring.outputs.applicationInsightsConnectionString
+      //'acr-username': listCredentials(containerRegistry.id, '2021-09-01').username
+      //'acr-password': listCredentials(containerRegistry.id, '2021-09-01').passwords[0].value
     }
     env: [
+      /*
       {
         name: 'AZURE_OPENAI_API_INSTANCE_NAME'
         value: openAiInstanceName
@@ -193,6 +222,8 @@ module backendApi './core/host/container-app.bicep' = {
         name: 'QDRANT_URL'
         value: qdrantUrl
       }
+        */
+        /*
       {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
         secretRef: 'appinsights-cs'
@@ -201,13 +232,40 @@ module backendApi './core/host/container-app.bicep' = {
         name: 'AZURE_CLIENT_ID'
         value: backendApiIdentity.outputs.clientId
       }
+        */
+      {
+        name: 'FLOWABLE_INSPECT_ENABLED'
+        value: 'true'
+        type: 'bool'
+      }
+      {
+        name: 'FLOWABLE_INDEXING_ENABLED'
+        value: 'false'
+        type: 'bool'
+      }
+      {
+        name: 'MANAGEMENT_METRICS_EXPORT_ELASTIC_ENABLED'
+        value: 'false'
+        type: 'bool'
+      }
+      {
+        name: 'MANAGEMENT_HEALTH_ELASTICSEARCH_ENABLED'
+        value: 'false'
+        type: 'bool'
+      }
+      {
+        name: 'SERVER_SERVLET_CONTEXT_PATH'
+        value: '/flowable-work'
+        type: 'string'
+      }
     ]
-    imageName: !empty(backendApiImageName) ? backendApiImageName : 'nginx:latest'
-    targetPort: 3000
+    imageName: backendApiImageName
+    targetPort: 8080
   }
 }
 
 // Ingestion API identity
+/*
 module ingestionApiIdentity 'core/security/managed-identity.bicep' = {
   name: 'ingestion-api-identity'
   scope: resourceGroup
@@ -216,8 +274,9 @@ module ingestionApiIdentity 'core/security/managed-identity.bicep' = {
     location: location
   }
 }
-
+*/
 // The ingestion API
+/*
 module ingestionApi './core/host/container-app.bicep' = {
   name: 'ingestion-api'
   scope: resourceGroup
@@ -414,8 +473,9 @@ module searchSvcContribRoleUser 'core/security/role.bicep' = if (useAzureAISearc
     principalType: 'User'
   }
 }
-
+*/
 // SYSTEM IDENTITIES
+/*
 module openAiRoleBackendApi 'core/security/role.bicep' = if (empty(openAiUrl)) {
   scope: resourceGroup
   name: 'openai-role-backendapi'
@@ -470,14 +530,14 @@ module searchSvcContribRoleIngestionApi 'core/security/role.bicep' = if (useAzur
     principalType: 'ServicePrincipal'
   }
 }
-
+*/
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_RESOURCE_GROUP string = resourceGroup.name
 
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
-output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
-
+//output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
+//output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
+/*
 output AZURE_OPENAI_API_ENDPOINT string = finalOpenAiUrl
 output AZURE_OPENAI_API_INSTANCE_NAME string = openAiInstanceName
 output AZURE_OPENAI_API_VERSION string = openAiApiVersion
@@ -490,5 +550,6 @@ output AZURE_AISEARCH_ENDPOINT string = searchUrl
 output QDRANT_URL string = qdrantUrl
 
 output FRONTEND_URI string = frontend.outputs.uri
+*/
 output BACKEND_API_URI string = backendApi.outputs.uri
-output INGESTION_API_URI string = ingestionApi.outputs.uri
+//output INGESTION_API_URI string = ingestionApi.outputs.uri

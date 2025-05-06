@@ -5,33 +5,33 @@ metadata:
   template: azure-openai-rag-workshop@1.0.0
 
 services:
-  frontend:
-    project: ./src/frontend
-    dist: dist
-    language: ts
-    host: staticwebapp
-    hooks:
-      predeploy:
-        windows:
-          shell: pwsh
-          run: Export-ModuleMember -Variable BACKEND_API_URI && npm run build
-        posix:
-          shell: sh
-          run: export BACKEND_API_URI && npm run build
+#  frontend:
+#    project: ./src/frontend
+#    dist: dist
+#    language: ts
+#    host: staticwebapp
+#    hooks:
+#      predeploy:
+#        windows:
+#          shell: pwsh
+#          run: Export-ModuleMember -Variable BACKEND_API_URI && npm run build
+#        posix:
+#          shell: sh
+#          run: export BACKEND_API_URI && npm run build
 
-  backend:
+  flowable-work:
     project: ./src/backend
     language: ts
     host: containerapp
     docker:
       context: ../..
 
-  ingestion:
-    project: ./src/ingestion
-    language: ts
-    host: containerapp
-    docker:
-      context: ../..
+#  ingestion:
+#    project: ./src/ingestion
+#    language: ts
+#    host: containerapp
+#    docker:
+#      context: ../..
 
 hooks:
   postprovision:

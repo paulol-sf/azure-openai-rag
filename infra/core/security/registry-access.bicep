@@ -14,6 +14,9 @@ resource aksAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
+  // Use when specifying a scope that is different than the deployment scope
+  // name: containerRegistryName
   name: containerRegistryName
+  //scope: az.resourceGroup('rules-engine')
 }
