@@ -98,7 +98,7 @@ module containerRegistryAccess '../security/registry-access.bicep' = if (usePriv
   }
 }
 
-resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
+resource app 'Microsoft.App/containerapps@2024-10-02-preview' = {
   name: name
   location: location
   tags: tags
@@ -113,18 +113,31 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
   }
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
+    environmentId: containerAppsEnvironment.id
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: revisionMode
-      ingress: ingressEnabled ? {
+      //ingress: ingressEnabled ? {
+      ingress: {
         external: external
         targetPort: targetPort
         transport: transport
-        allowInsecure: allowInsecure
-        corsPolicy: {
-          allowedOrigins: union([ 'https://portal.azure.com', 'https://ms.portal.azure.com' ], allowedOrigins)
+        traffic: [
+          {
+            weight: 100
+            latestRevision: true
+          }
+        ]
+        allowInsecure: true
+        stickySessions: {
+          affinity: 'none'
         }
+        //corsPolicy: {
+        //  allowedOrigins: union([ 'https://portal.azure.com', 'https://ms.portal.azure.com' ], allowedOrigins)
+        //}
         additionalPortMappings: additionalPortMappings
-      } : null
+      }// : null
+      /*
       dapr: daprEnabled ? {
         enabled: true
         appId: daprAppId
@@ -135,36 +148,72 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
         name: secret.key
         value: secret.value
       }]
-      service: !empty(serviceType) ? { type: serviceType } : null
-      registries: usePrivateRegistry ? [
+        */
+      //service: !empty(serviceType) ? { type: serviceType } : null
+      //registries: usePrivateRegistry ? [
+      registries: [
         {
           server: '${containerRegistryName}.${containerRegistryHostSuffix}'
           identity: userIdentity.id
         }
-      ] : []
+      ]// : []
+      identitySettings: []
+      runtime: {
+        java: {
+          enableMetrics: true
+          javaAgent: {
+            enabled: true
+            logging: {}
+          }
+        }
+      }
+      maxInactiveRevisions: 100
     }
     template: {
-      serviceBinds: !empty(serviceBinds) ? serviceBinds : null
+      //serviceBinds: !empty(serviceBinds) ? serviceBinds : null
       containers: [
         {
           image: !empty(imageName) ? imageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          imageType: 'ContainerImage'
           name: containerName
           env: env
           resources: {
-            cpu: json(containerCpuCoreCount)
-            memory: containerMemory
+            //cpu: json(containerCpuCoreCount)
+            cpu: 4
+            //memory: containerMemory
+            memory: '8Gi'
           }
+          probes: []
         }
       ]
+      /*
       scale: {
         minReplicas: containerMinReplicas
         maxReplicas: containerMaxReplicas
       }
+      */
+      scale: {
+        minReplicas: 1
+        maxReplicas: 2
+        cooldownPeriod: 300
+        pollingInterval: 30
+        rules: [
+          {
+            name: 'http-scaler'
+            http: {
+              metadata: {
+                concurrentRequests: '10'
+              }
+            }
+          }
+        ]
+      }
+      volumes: []
     }
   }
 }
 
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
   name: containerAppsEnvironmentName
 }
 

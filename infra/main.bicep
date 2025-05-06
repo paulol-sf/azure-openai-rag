@@ -236,26 +236,46 @@ module backendApi './core/host/container-app.bicep' = {
       {
         name: 'FLOWABLE_INSPECT_ENABLED'
         value: 'true'
-        type: 'bool'
+        //type: 'bool'
       }
       {
         name: 'FLOWABLE_INDEXING_ENABLED'
         value: 'false'
-        type: 'bool'
+        //type: 'bool'
       }
       {
         name: 'MANAGEMENT_METRICS_EXPORT_ELASTIC_ENABLED'
         value: 'false'
-        type: 'bool'
+        //type: 'bool'
       }
       {
         name: 'MANAGEMENT_HEALTH_ELASTICSEARCH_ENABLED'
         value: 'false'
-        type: 'bool'
+        //type: 'bool'
       }
       {
         name: 'SERVER_SERVLET_CONTEXT_PATH'
         value: '/flowable-work'
+        //type: 'string'
+      }
+      {
+        name: 'SPRING_DATASOURCE_DRIVER_CLASS_NAME'
+        value: 'org.postgresql.Driver'
+        type: 'string'
+      }
+      {
+        name: 'SPRING_DATASOURCE_URL'
+        value: 'jdbc:postgresql://psql-flw-nonprod02-flex.postgres.database.azure.com:5432/flw_ent_work_dev'
+        type: 'string'
+      }
+      {
+        name: 'SPRING_DATASOURCE_USERNAME'
+        value: 'flw_work_dev'
+        type: 'string'
+      }
+      {
+        name: 'SPRING_DATASOURCE_PASSWORD'
+        value: 'Today@031125'
         type: 'string'
       }
     ]
