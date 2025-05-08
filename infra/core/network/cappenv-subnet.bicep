@@ -1,7 +1,7 @@
 param virtualNetworkName string = 'VNET-SeleneDev'
 //param virtualNetworkResourceGroup string = 'RG-SeleneDev'
 param newSubnetName string //= 'SNET-new-capps-env-preprod'
-param newSubnetAddressPrefix string = '10.16.29.0/24' // Replace with the desired address prefix
+param newSubnetAddressPrefix string = '10.16.30.0/24' // Replace with the desired address prefix
 
 param routeTables_route_southcentralus_dev_externalid string = '/subscriptions/39abda1a-7fc7-4042-9ae0-efed65f44d5c/resourceGroups/RG-Default-Networking/providers/Microsoft.Network/routeTables/route-southcentralus-dev'
 

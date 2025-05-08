@@ -14,13 +14,13 @@ param logAnalyticsWorkspaceName string
 
 //param managedEnvironments_cappsenv_flw_preprod_name string = 'cappsenv-flw-preprod'
 //param virtualNetworks_VNET_SeleneDev_externalid string = '/subscriptions/39abda1a-7fc7-4042-9ae0-efed65f44d5c/resourceGroups/RG-SeleneDev/providers/Microsoft.Network/virtualNetworks/VNET-SeleneDev'
-
+param newSubnetName string
 
 module newSubnet '../network/cappenv-subnet.bicep' = {
   name: '${deployment().name}-subnet-create'
   scope: resourceGroup('RG-SeleneDev')
   params: {
-    newSubnetName: 'SNET-${deployment().name}'
+    newSubnetName: newSubnetName
   }
 }
 

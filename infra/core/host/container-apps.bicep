@@ -4,6 +4,7 @@ param location string = resourceGroup().location
 param tags object = {}
 
 param containerAppsEnvironmentName string
+param newSubnetName string
 //param containerRegistryName string
 //param containerRegistryResourceGroupName string = ''
 //param containerRegistryAdminUserEnabled bool = false
@@ -19,6 +20,7 @@ module containerAppsEnvironment 'container-apps-environment.bicep' = {
     tags: tags
     logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
     applicationInsightsName: applicationInsightsName
+    newSubnetName: newSubnetName
     daprEnabled: daprEnabled
   }
 }

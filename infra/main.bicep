@@ -11,8 +11,8 @@ param location string
 
 param resourceGroupName string = ''
 //param frontendName string = 'frontend'
-param backendApiName string = 'flowable-work'
-param backendApiImageName string = 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-work:3.17.3'
+param backendApiName string = 'flowable-enterprise'
+//param backendApiImageName string = 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-work:3.17.3'
 //param ingestionApiName string = 'ingestion'
 //param ingestionApiImageName string = ''
 //param qdrantName string = 'qdrant'
@@ -81,7 +81,9 @@ var tags = { 'azd-env-name': environmentName }
 
 //var ingestionApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}ingestion-api-${resourceToken}'
 //var backendApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}backend-api-${resourceToken}'
-var backendApiIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}flowable-work-${resourceToken}'
+var flwWorkIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}flowable-work-${resourceToken}'
+var flwDesignIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}flowable-design-${resourceToken}'
+var flwControlIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}flowable-control-${resourceToken}'
 //var qdrantIdentityName = '${abbrs.managedIdentityUserAssignedIdentities}qdrant-${resourceToken}'
 //var searchUrl = useQdrant ? '' : 'https://${searchService.outputs.name}.search.windows.net'
 //var openAiInstanceName = empty(openAiUrl) ? openAi.outputs.name : ''
@@ -114,6 +116,7 @@ module containerApps './core/host/container-apps.bicep' = {
     name: 'containerapps'
     containerAppsEnvironmentName: '${abbrs.appManagedEnvironments}${resourceToken}'
     //containerRegistryName: '${abbrs.containerRegistryRegistries}${resourceToken}'
+    newSubnetName: '${abbrs.networkVirtualNetworksSubnets}${resourceGroup.name}-${resourceToken}'
     location: location
     tags: tags
     applicationInsightsName: monitoring.outputs.applicationInsightsName
@@ -134,442 +137,235 @@ module frontend './core/host/staticwebapp.bicep' = {
   }
 }
 */
-// Backend API identity
-module backendApiIdentity 'core/security/managed-identity.bicep' = {
+// Flowable Work identity
+module FlowableWorkIdentity 'core/security/managed-identity.bicep' = {
   //name: 'backend-api-identity'
   name: 'flowable-work-identity'
   scope: resourceGroup
   params: {
-    name: backendApiIdentityName
+    name: flwWorkIdentityName
     location: location
   }
 }
-/*
-var acrPullRole = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
-resource aksAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: containerRegistry // Use when specifying a scope that is different than the deployment scope
-  name: guid(subscription().id, resourceGroup.id, backendApiIdentity.name, acrPullRole)
-  properties: {
-    roleDefinitionId: acrPullRole
-    principalType: 'ServicePrincipal'
-    principalId: backendApiIdentity.outputs.principalId
+// Flowable Design identity
+module FlowableDesignIdentity 'core/security/managed-identity.bicep' = {
+  name: 'flowable-design-identity'
+  scope: resourceGroup
+  params: {
+    name: flwDesignIdentityName
+    location: location
   }
 }
-*/
-/*
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2021-09-01' existing = {
-  scope: az.resourceGroup('rules-engine')
-  name: 'rulesenginecontainerregistrydev'
+
+// Flowable Control identity
+module FlowableControlIdentity 'core/security/managed-identity.bicep' = {
+  name: 'flowable-control-identity'
+  scope: resourceGroup
+  params: {
+    name: flwControlIdentityName
+    location: location
+  }
 }
-*/
-// The backend API
-module backendApi './core/host/container-app.bicep' = {
+
+// Flowable Work App
+module flowableWork './core/host/container-app.bicep' = {
   name: 'flowable-work'
   scope: resourceGroup
   params: {
-    name: !empty(backendApiName) ? backendApiName : '${abbrs.appContainerApps}flw-${resourceToken}'
+    name: '${abbrs.appContainerApps}flw-work-${resourceToken}'
     location: location
     tags: union(tags, { 'azd-service-name': backendApiName })
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     //containerRegistryName: containerApps.outputs.registryName
     containerRegistryName: 'rulesenginecontainerregistrydev'
-    identityName: backendApiIdentityName
+    identityName: flwWorkIdentityName
     //allowedOrigins: [frontend.outputs.uri]
     allowedOrigins: ['*']
     containerCpuCoreCount: '2.0'
     containerMemory: '4.0Gi'
     secrets: {
       'appinsights-cs': monitoring.outputs.applicationInsightsConnectionString
-      //'acr-username': listCredentials(containerRegistry.id, '2021-09-01').username
-      //'acr-password': listCredentials(containerRegistry.id, '2021-09-01').passwords[0].value
     }
     env: [
-      /*
-      {
-        name: 'AZURE_OPENAI_API_INSTANCE_NAME'
-        value: openAiInstanceName
-      }
-      {
-        name: 'AZURE_OPENAI_API_ENDPOINT'
-        value: finalOpenAiUrl
-      }
-      {
-        name: 'AZURE_OPENAI_API_VERSION'
-        value: openAiApiVersion
-      }
-      {
-        name: 'AZURE_OPENAI_API_DEPLOYMENT_NAME'
-        value: chatDeploymentName
-      }
-      {
-        name: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME'
-        value: embeddingsDeploymentName
-      }
-      {
-        name: 'AZURE_OPENAI_API_MODEL'
-        value: chatModelName
-      }
-      {
-        name: 'AZURE_OPENAI_API_EMBEDDINGS_MODEL'
-        value: embeddingsModelName
-      }
-      {
-        name: 'AZURE_AISEARCH_ENDPOINT'
-        value: searchUrl
-      }
-      {
-        name: 'QDRANT_URL'
-        value: qdrantUrl
-      }
-        */
-        /*
-      {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        secretRef: 'appinsights-cs'
-      }
-      {
-        name: 'AZURE_CLIENT_ID'
-        value: backendApiIdentity.outputs.clientId
-      }
-        */
       {
         name: 'FLOWABLE_INSPECT_ENABLED'
         value: 'true'
-        //type: 'bool'
       }
       {
         name: 'FLOWABLE_INDEXING_ENABLED'
         value: 'false'
-        //type: 'bool'
       }
       {
         name: 'MANAGEMENT_METRICS_EXPORT_ELASTIC_ENABLED'
         value: 'false'
-        //type: 'bool'
       }
       {
         name: 'MANAGEMENT_HEALTH_ELASTICSEARCH_ENABLED'
         value: 'false'
-        //type: 'bool'
       }
       {
         name: 'SERVER_SERVLET_CONTEXT_PATH'
         value: '/flowable-work'
-        //type: 'string'
       }
       {
         name: 'SPRING_DATASOURCE_DRIVER_CLASS_NAME'
         value: 'org.postgresql.Driver'
-        type: 'string'
       }
       {
         name: 'SPRING_DATASOURCE_URL'
         value: 'jdbc:postgresql://psql-flw-nonprod02-flex.postgres.database.azure.com:5432/flw_ent_work_dev'
-        type: 'string'
       }
       {
         name: 'SPRING_DATASOURCE_USERNAME'
         value: 'flw_work_dev'
-        type: 'string'
       }
       {
         name: 'SPRING_DATASOURCE_PASSWORD'
         value: 'Today@031125'
-        type: 'string'
       }
     ]
-    imageName: backendApiImageName
+    imageName: 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-work:3.17.3'
     targetPort: 8080
   }
 }
 
-// Ingestion API identity
-/*
-module ingestionApiIdentity 'core/security/managed-identity.bicep' = {
-  name: 'ingestion-api-identity'
+// Flowable Design App
+module flowableDesign './core/host/container-app.bicep' = {
+  name: 'flowable-design'
   scope: resourceGroup
   params: {
-    name: ingestionApiIdentityName
+    name: '${abbrs.appContainerApps}flw-design-${resourceToken}'
     location: location
-  }
-}
-*/
-// The ingestion API
-/*
-module ingestionApi './core/host/container-app.bicep' = {
-  name: 'ingestion-api'
-  scope: resourceGroup
-  params: {
-    name: !empty(ingestionApiName) ? ingestionApiName : '${abbrs.appContainerApps}ingestion-${resourceToken}'
-    location: location
-    tags: union(tags, { 'azd-service-name': ingestionApiName })
+    tags: union(tags, { 'azd-service-name': backendApiName })
     containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
-    identityName: ingestionApiIdentityName
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2.0Gi'
+    //containerRegistryName: containerApps.outputs.registryName
+    containerRegistryName: 'rulesenginecontainerregistrydev'
+    identityName: flwDesignIdentityName
+    //allowedOrigins: [frontend.outputs.uri]
+    allowedOrigins: ['*']
+    containerCpuCoreCount: '2.0'
+    containerMemory: '4.0Gi'
     secrets: {
       'appinsights-cs': monitoring.outputs.applicationInsightsConnectionString
     }
     env: [
       {
-        name: 'AZURE_OPENAI_API_INSTANCE_NAME'
-        value: openAiInstanceName
+        name: 'FLOWABLE_DESIGN_REMOTE_AUTHENTICATION_USER'
+        value: 'admin'
       }
       {
-        name: 'AZURE_OPENAI_API_ENDPOINT'
-        value: finalOpenAiUrl
+        name: 'FLOWABLE_DESIGN_REMOTE_AUTHENTICATION_PASSWORD'
+        value: 'Today@0327'
       }
       {
-        name: 'AZURE_OPENAI_API_VERSION'
-        value: openAiApiVersion
+        name: 'FLOWABLE_DESIGN_REMOTE_IDM_URL'
+        value: '${flowableWork.outputs.uri}/flowable-work'
       }
       {
-        name: 'AZURE_OPENAI_API_DEPLOYMENT_NAME'
-        value: chatDeploymentName
+        name: 'FLOWABLE_DESIGN_DEPLOYMENT_API_URL'
+        value: '${flowableWork.outputs.uri}/flowable-work/app-api'
       }
       {
-        name: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME'
-        value: embeddingsDeploymentName
+        name: 'FLOWABLE_DESIGN_UNDEPLOYMENT_API_URL'
+        value: '${flowableWork.outputs.uri}/flowable-work/platform-api/app-deployments'
       }
       {
-        name: 'AZURE_OPENAI_API_MODEL'
-        value: chatModelName
+        name: 'FLOWABLE_DESIGN_DB_STORE_ENABLED'
+        value: 'true'
       }
       {
-        name: 'AZURE_OPENAI_API_EMBEDDINGS_MODEL'
-        value: embeddingsModelName
+        name: 'SPRING_DATASOURCE_DRIVER_CLASS_NAME'
+        value: 'org.postgresql.Driver'
       }
       {
-        name: 'AZURE_AISEARCH_ENDPOINT'
-        value: searchUrl
+        name: 'SPRING_DATASOURCE_URL'
+        value: 'jdbc:postgresql://psql-flw-nonprod02-flex.postgres.database.azure.com:5432/flw_ent_design_dev'
       }
       {
-        name: 'QDRANT_URL'
-        value: qdrantUrl
+        name: 'SPRING_DATASOURCE_USERNAME'
+        value: 'flw_design_dev'
       }
       {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        secretRef: 'appinsights-cs'
-      }
-      {
-        name: 'AZURE_CLIENT_ID'
-        value: ingestionApiIdentity.outputs.clientId
+        name: 'SPRING_DATASOURCE_PASSWORD'
+        value: 'Today@031125'
       }
     ]
-    imageName: !empty(ingestionApiImageName) ? ingestionApiImageName : 'nginx:latest'
-    targetPort: 3001
+    imageName: 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-design:3.17.3'
+    targetPort: 8080
   }
 }
 
-module openAi 'core/ai/cognitiveservices.bicep' = if (empty(openAiUrl)) {
-  name: 'openai'
+// Flowable Control App
+module flowableControl './core/host/container-app.bicep' = {
+  name: 'flowable-control'
   scope: resourceGroup
   params: {
-    name: '${abbrs.cognitiveServicesAccounts}${resourceToken}'
-    location: openAiLocation
-    tags: tags
-    sku: {
-      name: openAiSkuName
-    }
-    disableLocalAuth: true
-    deployments: [
-      {
-        name: chatDeploymentName
-        model: {
-          format: 'OpenAI'
-          name: chatModelName
-          version: chatModelVersion
-        }
-        sku: {
-          name: 'GlobalStandard'
-          capacity: chatDeploymentCapacity
-        }
-      }
-      {
-        name: embeddingsDeploymentName
-        model: {
-          format: 'OpenAI'
-          name: embeddingsModelName
-          version: embeddingsModelVersion
-        }
-        capacity: embeddingsDeploymentCapacity
-      }
-    ]
-  }
-}
-
-module searchService 'core/search/search-services.bicep' = if (useAzureAISearch) {
-  name: 'search-service'
-  scope: resourceGroup
-  params: {
-    name: 'gptkb-${resourceToken}'
+    name: '${abbrs.appContainerApps}flw-control-${resourceToken}'
     location: location
-    tags: tags
-    disableLocalAuth: true
-    authOptions: null
-    sku: {
-      name: searchServiceSkuName
-    }
-    semanticSearch: 'free'
-  }
-}
-
-// Qdrant identity
-module qdrantIdentity 'core/security/managed-identity.bicep' = if (useQdrant) {
-  name: 'qdrant-api-identity'
-  scope: resourceGroup
-  params: {
-    name: qdrantIdentityName
-    location: location
-  }
-}
-
-module qdrant './core/host/container-app.bicep' = if (useQdrant) {
-  name: 'qdrant'
-  scope: resourceGroup
-  params: {
-    name: !empty(qdrantName) ? qdrantName : '${abbrs.appContainerApps}qdrant-${resourceToken}'
-    location: location
-    tags: union(tags, { 'azd-service-name': qdrantName })
+    tags: union(tags, { 'azd-service-name': backendApiName })
     containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
-    identityName: qdrantIdentityName
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2.0Gi'
+    //containerRegistryName: containerApps.outputs.registryName
+    containerRegistryName: 'rulesenginecontainerregistrydev'
+    identityName: flwControlIdentityName
+    //allowedOrigins: [frontend.outputs.uri]
+    allowedOrigins: ['*']
+    containerCpuCoreCount: '2.0'
+    containerMemory: '4.0Gi'
     secrets: {
       'appinsights-cs': monitoring.outputs.applicationInsightsConnectionString
     }
     env: [
       {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        secretRef: 'appinsights-cs'
+        name: 'FLOWABLE_COMMON_APP_IDM_ADMIN_USER'
+        value: 'admin'
+      }
+      {
+        name: 'FLOWABLE_COMMON_APP_IDM_ADMIN_PASSWORD'
+        value: 'test'
+      }
+      {
+        name: 'FLOWABLE_CONTROL_APP_CLUSTER_CONFIG_SERVER_ADDRESS'
+        value: '${flowableWork.outputs.uri}'
+      }
+      {
+        name: 'FLOWABLE_CONTROL_APP_CLUSTER_CONFIG_PORT'
+        value: '443'
+      }
+      {
+        name: 'FLOWABLE_CONTROL_APP_CLUSTER_CONFIG_CONTEXT_ROOT'
+        value: 'flowable-work'
+      }
+      {
+        name: 'FLOWABLE_CONTROL_APP_CLUSTER_CONFIG_PASSWORD'
+        value: 'Today@0327'
+      }
+      {
+        name: 'SPRING_DATASOURCE_DRIVER_CLASS_NAME'
+        value: 'org.postgresql.Driver'
+      }
+      {
+        name: 'SPRING_DATASOURCE_URL'
+        value: 'jdbc:postgresql://psql-flw-nonprod02-flex.postgres.database.azure.com:5432/flw_ent_control_preprod'
+      }
+      {
+        name: 'SPRING_DATASOURCE_USERNAME'
+        value: 'flw_control_preprod'
+      }
+      {
+        name: 'SPRING_DATASOURCE_PASSWORD'
+        value: 'Today@031125'
       }
     ]
-    imageName: !empty(qdrantImageName) ? qdrantImageName : 'docker.io/qdrant/qdrant'
-    targetPort: qdrantPort
-    allowInsecure: (qdrantPort == 6334 ? true : false)
-    // gRPC needs to be explicitly set for HTTP2
-    transport: (qdrantPort == 6334 ? 'HTTP2' : 'auto')
-    additionalPortMappings: (qdrantPort == 6334 ? [{
-      targetPort: 6333
-      exposedPort: 6333
-    }] : [])
+    imageName: 'rulesenginecontainerregistrydev.azurecr.io/repo.flowable.com/docker/flowable/flowable-control:3.17.3'
+    targetPort: 8080
   }
 }
 
-
-// USER ROLES
-module openAiRoleUser 'core/security/role.bicep' = if (empty(openAiUrl) && !isContinuousDeployment) {
-  scope: resourceGroup
-  name: 'openai-role-user'
-  params: {
-    principalId: principalId
-    // Cognitive Services OpenAI User
-    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principalType: 'User'
-  }
-}
-
-module searchContribRoleUser 'core/security/role.bicep' = if (useAzureAISearch && !isContinuousDeployment) {
-  scope: resourceGroup
-  name: 'search-contrib-role-user'
-  params: {
-    principalId: principalId
-    // Search Index Data Contributor
-    roleDefinitionId: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
-    principalType: 'User'
-  }
-}
-
-module searchSvcContribRoleUser 'core/security/role.bicep' = if (useAzureAISearch && !isContinuousDeployment) {
-  scope: resourceGroup
-  name: 'search-svccontrib-role-user'
-  params: {
-    principalId: principalId
-    // Search Service Contributor
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-    principalType: 'User'
-  }
-}
-*/
-// SYSTEM IDENTITIES
-/*
-module openAiRoleBackendApi 'core/security/role.bicep' = if (empty(openAiUrl)) {
-  scope: resourceGroup
-  name: 'openai-role-backendapi'
-  params: {
-    principalId: backendApi.outputs.identityPrincipalId
-    // Cognitive Services OpenAI User
-    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principalType: 'ServicePrincipal'
-  }
-}
-
-module searchRoleBackendApi 'core/security/role.bicep' = if (useAzureAISearch) {
-  scope: resourceGroup
-  name: 'search-role-backendapi'
-  params: {
-    principalId: backendApi.outputs.identityPrincipalId
-    // Search Index Data Reader
-    roleDefinitionId: '1407120a-92aa-4202-b7e9-c0e197c71c8f'
-    principalType: 'ServicePrincipal'
-  }
-}
-
-module openAiRoleIngestionApi 'core/security/role.bicep' = if (empty(openAiUrl)) {
-  scope: resourceGroup
-  name: 'openai-role-ingestion'
-  params: {
-    principalId: ingestionApi.outputs.identityPrincipalId
-    // Cognitive Services OpenAI User
-    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
-    principalType: 'ServicePrincipal'
-  }
-}
-
-module searchContribRoleIngestionApi 'core/security/role.bicep' = if (useAzureAISearch) {
-  scope: resourceGroup
-  name: 'search-contrib-role-ingestion'
-  params: {
-    principalId: ingestionApi.outputs.identityPrincipalId
-    // Search Index Data Contributor
-    roleDefinitionId: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
-    principalType: 'ServicePrincipal'
-  }
-}
-
-module searchSvcContribRoleIngestionApi 'core/security/role.bicep' = if (useAzureAISearch) {
-  scope: resourceGroup
-  name: 'search-svccontrib-role-ingestion'
-  params: {
-    principalId: ingestionApi.outputs.identityPrincipalId
-    // Search Service Contributor
-    roleDefinitionId: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
-    principalType: 'ServicePrincipal'
-  }
-}
-*/
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_RESOURCE_GROUP string = resourceGroup.name
 
-//output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
-//output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
-/*
-output AZURE_OPENAI_API_ENDPOINT string = finalOpenAiUrl
-output AZURE_OPENAI_API_INSTANCE_NAME string = openAiInstanceName
-output AZURE_OPENAI_API_VERSION string = openAiApiVersion
-output AZURE_OPENAI_API_DEPLOYMENT_NAME string = chatDeploymentName
-output AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME string = embeddingsDeploymentName
-output AZURE_OPENAI_API_MODEL string = chatModelName
-output AZURE_OPENAI_API_EMBEDDINGS_MODEL string = embeddingsModelName
-
-output AZURE_AISEARCH_ENDPOINT string = searchUrl
-output QDRANT_URL string = qdrantUrl
-
-output FRONTEND_URI string = frontend.outputs.uri
-*/
-output BACKEND_API_URI string = backendApi.outputs.uri
-//output INGESTION_API_URI string = ingestionApi.outputs.uri
+output FLOWABLE_WORK_API_URI string = flowableWork.outputs.uri
+output FLOWABLE_DESIGN_API_URI string = flowableDesign.outputs.uri
+output FLOWABLE_CONTROL_API_URI string = flowableControl.outputs.uri
